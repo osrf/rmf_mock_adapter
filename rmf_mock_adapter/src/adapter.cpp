@@ -31,17 +31,28 @@ public:
   rmf_traffic::schedule::Participant participant;
   std::shared_ptr<rmf_traffic::agv::Planner> planner;
   rmf_traffic::agv::Planner::Options options;
-  std::shared_ptr<RobotCommandHandle> command;
+  std::weak_ptr<RobotCommandHandle> weak_command;
   std::vector<rmf_traffic::agv::Plan::Start> position;
 
   rmf_utils::optional<rmf_traffic::agv::Plan::Goal> goal = rmf_utils::nullopt;
+  bool finished = false;
 
   void send_path_command()
   {
     if (!goal)
     {
-      std::cerr << "ERROR: Trying to issue a path command before a goal is set!"
+      std::cerr << "ERROR: Trying to issue a path command to ["
+                << participant.description().name() << "] before a goal is set!"
                 << std::endl;
+      return;
+    }
+
+    const auto command = weak_command.lock();
+    if (!command)
+    {
+      std::cerr << "ERROR: Trying to issue a path command to ["
+                << participant.description().name() << "] after its command "
+                << "handle has expired" << std::endl;
       return;
     }
 
@@ -66,6 +77,7 @@ public:
       return;
     }
 
+    finished = false;
     participant.set(result->get_itinerary());
     std::cout << "Issuing new path command to ["
               << participant.description().name() << "]" << std::endl;
@@ -75,6 +87,7 @@ public:
     {
       std::cout << "[" << participant.description().name() << "] has reported "
                 << "finishing!" << std::endl;
+      finished = true;
     });
   }
 
@@ -109,6 +122,11 @@ public:
     handle._pimpl->goal = std::move(goal);
     handle._pimpl->send_path_command();
   }
+
+  static bool is_finished(const RobotUpdateHandle& handle)
+  {
+    return handle._pimpl->finished;
+  }
 };
 
 //==============================================================================
@@ -127,17 +145,25 @@ std::vector<rmf_traffic::agv::Plan::Start> make_starts(
     const std::vector<std::size_t>& initial_lanes)
 {
   const auto now = std::chrono::steady_clock::now();
-  std::vector<rmf_traffic::agv::Plan::Start> starts;
-  for (const std::size_t l : initial_lanes)
+  if (initial_lanes.empty())
   {
-    const auto wp = nav_graph.get_lane(l).exit().waypoint_index();
-
-    starts.emplace_back(
-        now, wp, initial_position[2],
-        Eigen::Vector2d(initial_position.block<2,1>(0,0)), l);
+    return rmf_traffic::agv::compute_plan_starts(
+          nav_graph, initial_position, now);
   }
+  else
+  {
+    std::vector<rmf_traffic::agv::Plan::Start> starts;
+    for (const std::size_t l : initial_lanes)
+    {
+      const auto wp = nav_graph.get_lane(l).exit().waypoint_index();
 
-  return starts;
+      starts.emplace_back(
+          now, wp, initial_position[2],
+          Eigen::Vector2d(initial_position.block<2,1>(0,0)), l);
+    }
+
+    return starts;
+  }
 }
 
 //==============================================================================
@@ -266,6 +292,7 @@ class TestScenario::Implementation
 public:
 
   std::shared_ptr<rmf_traffic::schedule::Database> database;
+  std::vector<std::shared_ptr<RobotUpdateHandle>> handles;
 
   Implementation()
     : database(std::make_shared<rmf_traffic::schedule::Database>())
@@ -295,7 +322,19 @@ void TestScenario::test(std::vector<Condition> conditions)
   {
     RobotUpdateHandle::Implementation::set_goal(
           *condition.robot, condition.goal);
+
+    _pimpl->handles.push_back(condition.robot);
   }
+}
+
+//==============================================================================
+bool TestScenario::finished() const
+{
+  for (const auto& handle : _pimpl->handles)
+    if (!RobotUpdateHandle::Implementation::is_finished(*handle))
+      return false;
+
+  return true;
 }
 
 //==============================================================================

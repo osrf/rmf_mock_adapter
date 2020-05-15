@@ -53,4 +53,10 @@ install(
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+add_executable(test_fleet_adapter test/test_fleet_adapter.cpp)
+target_link_libraries(test_fleet_adapter
+  PRIVATE
+    rmf_mock_adapter
+)
+
 ament_package()

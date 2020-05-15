@@ -152,6 +152,8 @@ public:
   /// Initiate a test with the given conditions.
   void test(std::vector<Condition> conditions);
 
+  bool finished() const;
+
   /// Constructor
   TestScenario();
 
