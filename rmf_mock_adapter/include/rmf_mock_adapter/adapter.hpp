@@ -83,10 +83,21 @@ public:
   /// Update the current position of the robot by specifying the x, y, yaw
   /// position of the robot and one or more lanes that the robot is occupying.
   ///
-  /// If no lane is specified, then the adapter will assume that the robot has
-  /// exited the navigation graph.
-  void update_position(const Eigen::Vector3d& position,
+  /// \warning At least one lane must be specified. If no lane information is
+  /// available, then use the update_position(std::string, Eigen::Vector3d)
+  /// signature of this function.
+  void update_position(
+      const Eigen::Vector3d& position,
       const std::vector<std::size_t>& lanes);
+
+  /// Update the current position of the robot by specifying the x, y, yaw
+  /// position of the robot and what map the robot is on.
+  ///
+  /// \warning This function should only be used if the robot has diverged from
+  /// the navigation graph somehow.
+  void update_position(
+      const std::string& map_name,
+      const Eigen::Vector3d& position);
 
   class Implementation;
 private:

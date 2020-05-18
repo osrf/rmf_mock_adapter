@@ -144,26 +144,19 @@ std::vector<rmf_traffic::agv::Plan::Start> make_starts(
     const Eigen::Vector3d& initial_position,
     const std::vector<std::size_t>& initial_lanes)
 {
+  assert(!initial_lanes.empty());
   const auto now = std::chrono::steady_clock::now();
-  if (initial_lanes.empty())
+  std::vector<rmf_traffic::agv::Plan::Start> starts;
+  for (const std::size_t l : initial_lanes)
   {
-    return rmf_traffic::agv::compute_plan_starts(
-          nav_graph, initial_position, now);
-  }
-  else
-  {
-    std::vector<rmf_traffic::agv::Plan::Start> starts;
-    for (const std::size_t l : initial_lanes)
-    {
-      const auto wp = nav_graph.get_lane(l).exit().waypoint_index();
+    const auto wp = nav_graph.get_lane(l).exit().waypoint_index();
 
-      starts.emplace_back(
-          now, wp, initial_position[2],
-          Eigen::Vector2d(initial_position.block<2,1>(0,0)), l);
-    }
-
-    return starts;
+    starts.emplace_back(
+        now, wp, initial_position[2],
+        Eigen::Vector2d(initial_position.block<2,1>(0,0)), l);
   }
+
+  return starts;
 }
 
 //==============================================================================
@@ -196,6 +189,17 @@ void RobotUpdateHandle::update_position(
 {
   _pimpl->position = make_starts(
         _pimpl->planner->get_configuration().graph(), position, lanes);
+}
+
+//==============================================================================
+void RobotUpdateHandle::update_position(
+    const std::string& map_name,
+    const Eigen::Vector3d& position)
+{
+  const auto now = std::chrono::steady_clock::now();
+  _pimpl->position = rmf_traffic::agv::compute_plan_starts(
+        _pimpl->planner->get_configuration().graph(),
+        map_name, position, now);
 }
 
 //==============================================================================
