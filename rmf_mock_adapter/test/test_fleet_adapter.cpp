@@ -15,133 +15,15 @@
  *
 */
 
-#include <rmf_mock_adapter/adapter.hpp>
+#include "MockRobotCommandHandle.hpp"
+#include "TestMap.hpp"
 
 #include <rmf_traffic/geometry/Circle.hpp>
-
-#include <random>
-
-class MockRobotCommandHandle : public rmf_mock_adapter::RobotCommandHandle
-{
-public:
-
-  void follow_new_path(
-      const std::vector<rmf_traffic::agv::Plan::Waypoint>& waypoints,
-      std::function<void()> path_finished_callback) final
-  {
-    _current_path_index = 0;
-    _waypoints = waypoints;
-    _path_finished_callback = path_finished_callback;
-  }
-
-  void dock(const std::string&, std::function<void()>)
-  {
-    // Not supported
-  }
-
-  void step()
-  {
-    if (_waypoints.empty())
-      return;
-
-    if (_current_path_index < _waypoints.size())
-      ++_current_path_index;
-
-    if (_current_path_index < _waypoints.size())
-    {
-      const auto& wp = _waypoints[_current_path_index];
-      if (wp.graph_index())
-      {
-        updater->update_position(*wp.graph_index(), 0.0);
-      }
-      else
-      {
-        updater->update_position(wp.position(), {});
-      }
-
-      if (interruped())
-        updater->interrupted();
-    }
-
-    if (_current_path_index == _waypoints.size() && _path_finished_callback)
-    {
-      _path_finished_callback();
-      _path_finished_callback = nullptr;
-    }
-  }
-
-  bool interruped()
-  {
-    // This gives a 40% probability of an interruption occurring at each step.
-    return std::uniform_real_distribution<double>(0.0, 1.0)(rng) < 0.4;
-  }
-
-  std::shared_ptr<rmf_mock_adapter::RobotUpdateHandle> updater;
-
-  std::size_t _current_path_index;
-  std::vector<rmf_traffic::agv::Plan::Waypoint> _waypoints;
-  std::function<void()> _path_finished_callback;
-
-  MockRobotCommandHandle()
-    : rng(std::random_device()())
-  {
-    // Do nothing
-  }
-
-  std::mt19937 rng;
-
-};
 
 int main()
 {
   const std::string test_map_name = "test_map";
-  rmf_traffic::agv::Graph graph;
-  graph.add_waypoint(test_map_name, {0.0, -10.0}); // 0
-  graph.add_waypoint(test_map_name, {0.0, -5.0}, true);  // 1
-  graph.add_waypoint(test_map_name, {5.0, -5.0}, true);  // 2
-  graph.add_waypoint(test_map_name, {-10.0, 0.0}); // 3
-  graph.add_waypoint(test_map_name, {-5.0, 0.0}, true); // 4
-  graph.add_waypoint(test_map_name, {0.0, 0.0}); // 5
-  graph.add_waypoint(test_map_name, {5.0, 0.0}); // 6
-  graph.add_waypoint(test_map_name, {10.0, 0.0}); // 7
-  graph.add_waypoint(test_map_name, {0.0, 5.0}, true); // 8
-  graph.add_waypoint(test_map_name, {5.0, 5.0}, true); // 9
-  graph.add_waypoint(test_map_name, {0.0, 10.0}); // 10
-
-  /*
-   *                  10
-   *                   |
-   *                   |
-   *                   8------9
-   *                   |      |
-   *                   |      |
-   *     3------4------5------6------7
-   *                   |      |
-   *                   |      |
-   *                   1------2
-   *                   |
-   *                   |
-   *                   0
-   **/
-
-  auto add_bidir_lane = [&](const std::size_t w0, const std::size_t w1)
-    {
-      graph.add_lane(w0, w1);
-      graph.add_lane(w1, w0);
-    };
-
-  add_bidir_lane(0, 1);
-  add_bidir_lane(1, 2);
-  add_bidir_lane(1, 5);
-  add_bidir_lane(2, 6);
-  add_bidir_lane(3, 4);
-  add_bidir_lane(4, 5);
-  add_bidir_lane(5, 6);
-  add_bidir_lane(6, 7);
-  add_bidir_lane(5, 8);
-  add_bidir_lane(6, 9);
-  add_bidir_lane(8, 9);
-  add_bidir_lane(8, 10);
+  rmf_traffic::agv::Graph graph = make_graph();
 
   rmf_traffic::Profile profile{
     rmf_traffic::geometry::make_final_convex<

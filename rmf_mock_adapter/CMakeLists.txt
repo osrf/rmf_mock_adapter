@@ -24,7 +24,7 @@ include(GNUInstallDirs)
 
 find_package(rmf_traffic REQUIRED)
 
-add_library(rmf_mock_adapter SHARED src/adapter.cpp)
+add_library(rmf_mock_adapter SHARED src/adapter.cpp src/Transport.cpp)
 
 target_link_libraries(rmf_mock_adapter
   PUBLIC
@@ -35,6 +35,7 @@ target_include_directories(rmf_mock_adapter
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/RxCpp-4.1.0/Rx/v2/src>
 )
 
 ament_export_interfaces(rmf_mock_adapter HAS_LIBRARY_TARGET)
@@ -58,5 +59,30 @@ target_link_libraries(test_fleet_adapter
   PRIVATE
     rmf_mock_adapter
 )
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_catch2 REQUIRED)
+  find_package(rmf_utils REQUIRED)
+  find_package(rclcpp REQUIRED)
+  find_package(std_msgs REQUIRED)
+
+  ament_add_catch2(
+    rmf_rx_jobs_test
+      test/main.cpp
+      test/RxJobsTest.cpp
+      test/TransportTest.cpp
+      test/jobs/FollowPath.cpp
+  )
+  target_include_directories(rmf_rx_jobs_test
+    PRIVATE
+      ${std_msgs_INCLUDE_DIRS}
+  )
+  target_link_libraries(rmf_rx_jobs_test
+    PRIVATE
+      rmf_mock_adapter
+      rmf_utils::rmf_utils
+      ${std_msgs_LIBRARIES}
+  )
+endif()
 
 ament_package()
