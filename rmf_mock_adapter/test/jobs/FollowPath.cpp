@@ -193,6 +193,7 @@ private:
 struct MetaPlannerAction
 {
   using Result = std::vector<rmf_traffic::Route>;
+  using MetaJob = MergedJob<PlannerAction>;
 
   struct JobResult
   {
@@ -207,6 +208,7 @@ struct MetaPlannerAction
   };
 
   std::vector<std::shared_ptr<PlannerAction>> planner_actions;
+  std::unique_ptr<MetaJob> meta_job;
   rmf_utils::optional<JobResult> best_result;
   std::size_t finished_count = 0;
   EstimateInfo best_estimate;
@@ -315,9 +317,15 @@ struct MetaPlannerAction
     //vvvvvvvvvvvvvvvvvvvvv TODO: Make this parallel vvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 //    std::cout << "Jobs: " << planner_actions.size() << std::endl;
 
-    auto meta_job = make_job_from_action_list(planner_actions);
+    std::vector<Job<PlannerAction>> planner_jobs{};
+    planner_jobs.reserve(planner_actions.size());
+    for (const auto& action : planner_actions)
+    {
+      planner_jobs.emplace_back(make_job(action));
+    }
+    meta_job = std::make_unique<MetaJob>(make_job_from_action_list(planner_actions));
     meta_job->subscribe(
-          [this, s, estimate_leeway, meta_job](
+          [this, s, estimate_leeway](
             const PlannerAction::Progress& progress)
     {
 //      std::cout << "thread: " << std::this_thread::get_id() << std::endl;
@@ -425,7 +433,7 @@ TEST_CASE("Mega")
   const auto benchmark_start = std::chrono::steady_clock::now();
 
   auto meta_planner_job = make_job(std::make_shared<MetaPlannerAction>());
-  meta_planner_job->as_blocking().subscribe([](const auto& itinerary)
+  meta_planner_job.as_blocking().subscribe([](const auto& itinerary)
   {
     std::cout <<"\nBest plan for B:" << std::endl;
     print_itinerary(itinerary);

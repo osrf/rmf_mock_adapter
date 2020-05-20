@@ -25,30 +25,33 @@
 template<typename Action>
 inline auto make_job(const std::shared_ptr<Action>& action)
 {
-  using Job = decltype(detail::make_observable<typename Action::Result>(action));
-  return std::make_shared<Job>(detail::make_observable<typename Action::Result>(action));
+  return detail::make_observable<typename Action::Result>(action);
 }
 
 template<typename T, typename F>
 inline auto make_job(const F& f)
 {
-  using Job = decltype(detail::make_observable<T>(std::make_shared<F>(f)));
-  return std::make_shared<Job>(detail::make_observable<T>(std::make_shared<F>(f)));
+  return detail::make_observable<T>(std::make_shared<F>(f));
 }
 
 template<typename Job0, typename... Jobs>
 inline auto merge_jobs(const Job0& o0, Jobs&&... os)
 {
-  using Job = decltype(o0->merge(rxcpp::serialize_event_loop(), (*os)...));
-  return std::make_shared<Job>(o0->merge(rxcpp::serialize_event_loop(), (*os)...));
+  return o0.merge(rxcpp::serialize_event_loop(), os...);
 }
 
 template<typename ActionsIterable>
 inline auto make_job_from_action_list(const ActionsIterable& actions)
 {
   using Action = typename std::iterator_traits<decltype(actions.begin())>::value_type::element_type;
-  using Job = decltype(detail::make_merged_observable<typename Action::Result>(actions));
-  return std::make_shared<Job>(detail::make_merged_observable<typename Action::Result>(actions));
+  return detail::make_merged_observable<typename Action::Result>(actions);
 }
+
+template<typename Action>
+using Job = decltype(make_job(std::declval<std::shared_ptr<Action>>()));
+
+template<typename Action>
+using MergedJob = decltype(make_job_from_action_list(
+  std::declval<std::vector<std::shared_ptr<Action>>>()));
 
 #endif //RMF_RXCPP__RXJOBS_HPP

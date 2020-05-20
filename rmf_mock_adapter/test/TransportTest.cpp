@@ -58,7 +58,7 @@ TEST_CASE("publish subscribe loopback", "[Transport]")
         s.on_completed();
       });
     });
-    j->as_blocking().subscribe();
+    j.as_blocking().subscribe();
     REQUIRE(received);
     REQUIRE(transport->count_subscribers(topic_name) == 1);
   }
