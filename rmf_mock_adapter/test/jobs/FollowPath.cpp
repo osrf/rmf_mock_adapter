@@ -336,7 +336,7 @@ struct MetaPlannerAction
       if (result) // This evaluates to true if a plan is ready
       {
         finished_count++;
-//        std::cout << "(Success) Finished: " << fnished_count << std::endl;
+//        std::cout << "(Success) Finished: " << finished_count << std::endl;
         const auto finish_time =
             *result->get_itinerary().back().trajectory().finish_time();
 
@@ -345,7 +345,7 @@ struct MetaPlannerAction
 
         if (!best_result || cost < best_result->cost)
         {
-//          std::cout << "New best" << std::endl;
+//          std::cout << "New best: " << cost << std::endl;
           // If no result exists yet, use this as the best result.
           best_result = JobResult{cost, *result};
           best_estimate.cost = cost;

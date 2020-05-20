@@ -197,9 +197,12 @@ void RobotUpdateHandle::update_position(
     const Eigen::Vector3d& position)
 {
   const auto now = std::chrono::steady_clock::now();
+//  _pimpl->position = rmf_traffic::agv::compute_plan_starts(
+//        _pimpl->planner->get_configuration().graph(),
+//        map_name, position, now);
   _pimpl->position = rmf_traffic::agv::compute_plan_starts(
         _pimpl->planner->get_configuration().graph(),
-        map_name, position, now);
+        position, now);
 }
 
 //==============================================================================
