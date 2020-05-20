@@ -179,8 +179,13 @@ private:
           std::chrono::seconds(5),
           &do_not_start);
 
-    return rmf_traffic::agv::Planner(std::move(config), std::move(options))
+    auto setup = rmf_traffic::agv::Planner(
+          std::move(config), std::move(options))
         .plan(std::move(start), std::move(goal));
+
+    setup.options().interrupt_flag(nullptr);
+
+    return setup;
   }
 };
 
