@@ -245,7 +245,7 @@ public:
           profile);
 
     auto participant = rmf_traffic::schedule::make_participant(
-          std::move(description), *database);
+          std::move(description), database);
 
     return RobotUpdateHandle::Implementation::make_shared(
           *database,
